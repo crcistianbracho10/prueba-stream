@@ -1,0 +1,31 @@
+name: Retransmitir Canal Zulia 720p
+
+on:
+  workflow_dispatch:
+    inputs:
+      duracion_minutos:
+        description: 'Duración de la prueba en minutos (máx 350)'
+        required: true
+        default: '30'
+
+jobs:
+  restream:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      - name: Instalar FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Leer M3U8, recodificar a 720p y enviar a RTMPS
+        env:
+          KEY: ${{ secrets.STREAM_KEY }}
+        run: |
+          timeout ${{ github.event.inputs.duracion_minutos }}m ffmpeg -re -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 \
+            -i "https://183.giatvcdn.com/ssh101/ssh101/canalczulia/chunks.m3u8" \
+            -c:v libx264 -preset veryfast -b:v 2500k -maxrate 2500k -bufsize 5000k \
+            -vf "scale=1280:720" -r 30 -g 60 \
+            -c:a aac -b:a 128k -ar 44100 \
+            -f flv "rtmps://ingest.streamastudios.com/live/$KEY"
